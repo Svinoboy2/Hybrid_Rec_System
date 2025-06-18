@@ -6,11 +6,11 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.neighbors import NearestNeighbors
 from collections import defaultdict
 
-# === 1. Подгружаем данные ===
+# 1. Подгружаем данные 
 interactions = pd.read_csv("C:/Users/moyap/user_item_interactions_filtered.csv")
 features = pd.read_csv("C:/Users/moyap/content_features.csv").dropna(subset=['track_id'])
 
-# Обеспечиваем наличие нужных столбцов
+# проверка наличие нужных столбцов
 assert 'title' in features.columns, "В content_features.csv должен быть столбец 'title'"
 assert 'artist' in features.columns, "В content_features.csv должен быть столбец 'artist'"
 
@@ -27,7 +27,7 @@ features['item_num'] = item_encoder.transform(features['track_id'])
 
 
 
-# === 2. Модель NCF ===
+#  2. Модель NCF 
 class NCF(nn.Module):
     def __init__(self, n_users, n_items, emb_dim=128):
         super().__init__()
@@ -59,7 +59,7 @@ model = NCF(num_users, num_items).to(device)
 model.load_state_dict(torch.load("C:/Users/moyap/ncf_model_new.pth", map_location=device))
 model.eval()
 
-# === 3. Content-based часть (KNN по аудиофичам) ===
+# 3. Content-based часть (KNN по аудиофичам) 
 audio_cols = [col for col in features.columns if col not in ['track_id', 'title', 'artist', 'item_num'] and features[col].dtype in [np.float64, np.int64]]
 scaler = StandardScaler()
 features[audio_cols] = scaler.fit_transform(features[audio_cols])
@@ -82,7 +82,7 @@ def get_knn_scores(user_history, n=10):
             scores[tid] += 1 - dist  # ближе → выше
     return dict(scores)
 
-# === 4. Гибридная рекомендация ===
+#  4. Гибридная рекомендация 
 def hybrid_recommend(user_id, alpha=0.7, top_n=10):
     # История пользователя
     user_hist = interactions[interactions['user_id'] == user_id]['track_id'].tolist()
@@ -118,7 +118,7 @@ def hybrid_recommend(user_id, alpha=0.7, top_n=10):
     res_df = res_df.reset_index(drop=True)
     return res_df
 
-# === 5. Метрики качества для топ-10 ===
+# 5. Метрики качества для топ-10 
 def evaluate_hybrid(interactions, features, model, user_encoder, item_encoder, alpha=0.7, top_n=10, n_users=100):
     precisions, recalls, ndcgs = [], [], []
     np.random.seed(42)
@@ -147,7 +147,7 @@ def evaluate_hybrid(interactions, features, model, user_encoder, item_encoder, a
         ndcgs.append(ndcg)
     return np.mean(precisions), np.mean(recalls), np.mean(ndcgs)
 
-# === Пример вывода ===
+#  Пример вывода 
 user_id = interactions['user_id'].iloc[10000]
 recs_df = hybrid_recommend(user_id, alpha=0.7, top_n=10)
 print(f"\nГибридные рекомендации для пользователя {user_id}:")
